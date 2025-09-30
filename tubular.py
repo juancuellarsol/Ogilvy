@@ -14,7 +14,7 @@ Notas:
 - No usa infer_datetime_format (deprecado).
 - Normaliza 'a.m.'/'p.m.' -> 'AM'/'PM'.
 - Autodetecta formato base (slash => dayfirst; dash => ISO) para evitar warnings.
-- 'hora' se trunca a la hora inferior (17:01 -> 17:00) y se formatea en 12h AM/PM.
+- 'hora' se trunca a la hora inferior (17:01 -> 17:00) y se almacena como fracción del día para Excel.
 """
 
 from __future__ import annotations
@@ -136,7 +136,7 @@ def process_dataframe(
     """
     Procesa un DataFrame:
     - Detecta/parsea la columna de fecha/hora.
-    - Agrega 'date' (M/D/YYYY) y 'hora' (12h truncada a la hora inferior).
+    - Agrega 'date' (M/D/YYYY) y 'hora' (como fracción del día para Excel).
     - NO crea 'tag' ni 'tag_text'.
     - Permite conservar un subconjunto de columnas (`keep_columns`).
     """
@@ -163,14 +163,12 @@ def process_dataframe(
     # Derivadas
     date_series = pd.to_datetime(out[col])
 
-    hora_series = out[col].dt.strftime("%I:%M:%S %p").str.lstrip("0")
-
-    #hour_bucket = out[col].dt.floor("h")
-    #hora_seconds = (hour_bucket.dt.hour * 3600
-    #            + hour_bucket.dt.minute * 60
-    #            + hour_bucket.dt.second)
-    #hora_series  = hora_seconds / 86400.0   
-    #hora_series = hour_bucket.dt.strftime("%I:00:00 %p").str.lstrip("0")
+    # CORRECCIÓN: almacenar 'hora' como fracción del día para Excel
+    hour_bucket = out[col].dt.floor("h")
+    hora_seconds = (hour_bucket.dt.hour * 3600
+                + hour_bucket.dt.minute * 60
+                + hour_bucket.dt.second)
+    hora_series = hora_seconds / 86400.0   # fracción del día (0..1)
 
     # Insertar evitando duplicados
     for c in ("date", "hora"):
@@ -261,23 +259,11 @@ def export_df(df: pd.DataFrame, out_path: Union[str, Path]) -> Path:
                     ws.set_column(c_date, c_date, 10, fmt_date)
 
                 # --- FORMATEO REAL DE 'hora' ---
-                # 'hora' DEBE venir como fracción del día (0..1). La reescribimos como datetime
+                # 'hora' VIENE como fracción del día (0..1). Aplicamos formato de hora
                 if "hora" in df.columns:
                     fmt_time = wb.add_format({"num_format": "h:mm:ss AM/PM"})
                     c_hora = df.columns.get_loc("hora")
                     ws.set_column(c_hora, c_hora, 12, fmt_time)
-
-                    base = pd.Timestamp(1899, 12, 30)  # fecha base de Excel
-                    vals = df["hora"].values
-
-                    # Reescribe fila por fila (r=1 es la primera fila de datos, debajo del header)
-                    for r, v in enumerate(vals, start=1):
-                        if pd.notna(v):
-                            # v es fracción de día -> pásalo a datetime de Excel
-                            dt = base + pd.to_timedelta(float(v) * 86400, unit="s")
-                            ws.write_datetime(r, c_hora, dt.to_pydatetime(), fmt_time)
-                        else:
-                            ws.write_blank(r, c_hora, None, fmt_time)
 
         except ModuleNotFoundError:
             # --- Fallback sin xlsxwriter: usa openpyxl ---
@@ -299,16 +285,10 @@ def export_df(df: pd.DataFrame, out_path: Union[str, Path]) -> Path:
                 if "hora" in df.columns:
                     c_hora = df.columns.get_loc("hora") + 1  # 1-based
                     col_letter = get_column_letter(c_hora)
-                    for r, v in enumerate(df["hora"].values, start=2):
+                    for r in range(2, ws.max_row + 1):
                         cell = ws[f"{col_letter}{r}"]
-                        if pd.notna(v):
-                            # conv. a datetime y deja solo la hora (sin fecha)
-                            ts = (pd.Timestamp(1899, 12, 30) +
-                                  pd.to_timedelta(float(v) * 86400, unit="s"))
-                            cell.value = ts.to_pydatetime().time()
+                        if cell.value is not None:
                             cell.number_format = "h:mm:ss AM/PM"
-                        else:
-                            cell.value = None
                     wb.save(out_path)
             except Exception:
                 # si algo falla, al menos queda el archivo
@@ -320,17 +300,6 @@ def export_df(df: pd.DataFrame, out_path: Union[str, Path]) -> Path:
         raise ValueError("Extensión no soportada. Usa .xlsx o .csv.")
 
     return out_path
-
-
-#def export_df(df: pd.DataFrame, out_path: Union[str, Path]) -> Path:
-#    out_path = Path(out_path)
-#    if out_path.suffix.lower() in (".xlsx", ".xls"):
-#        df.to_excel(out_path, index=False)
-#    elif out_path.suffix.lower() == ".csv":
-#        df.to_csv(out_path, index=False)
-#    else:
-#        raise ValueError("Extensión de export no soportada. Usa .xlsx o .csv.")
-#    return out_path
 
 def _derive_out_path(file_path: Union[str, Path], suffix: str, fmt: str) -> Path:
     file_path = Path(file_path)
