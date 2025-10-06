@@ -1,0 +1,42 @@
+[
+  {
+    "product_id": "P001",
+    "product_name": "Laptop Pro",
+    "category": "Electronics",
+    "price": 1299.99,
+    "stock_quantity": 25,
+    "supplier": "TechCorp"
+  },
+  {
+    "product_id": "P002",
+    "product_name": "Wireless Mouse",
+    "category": "Electronics",
+    "price": 29.99,
+    "stock_quantity": 150,
+    "supplier": "TechCorp"
+  },
+  {
+    "product_id": "P003",
+    "product_name": "Office Chair",
+    "category": "Furniture",
+    "price": 249.99,
+    "stock_quantity": 45,
+    "supplier": "FurniCorp"
+  },
+  {
+    "product_id": "P004",
+    "product_name": "Desk Lamp",
+    "category": "Furniture",
+    "price": 79.99,
+    "stock_quantity": 30,
+    "supplier": "FurniCorp"
+  },
+  {
+    "product_id": "P005",
+    "product_name": "Coffee Maker",
+    "category": "Appliances",
+    "price": 129.99,
+    "stock_quantity": 20,
+    "supplier": "HomeCorp"
+  }
+]
