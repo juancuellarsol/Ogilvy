@@ -117,34 +117,6 @@ def process_dataframe(
     
     hora_series = out[col].dt.floor("h").dt.strftime("%I:%M:%S %p").str.lstrip("0")#.str.replace("AM", "a. m.").str.replace("PM", "p. m.")
     
-    #out[col].dt.strftime("%I:%M:%S %p").str.lstrip("0")
-
-    
-    # Concatenación (solo si la quieres como texto también)
-    #tag_text = date_series + "-" + hora_series
-
-    # Tag como número (timestamp en segundos)
-    #tag_series = out[col].astype("int64") // 10**9
-    
-    # Tag: concatenar fecha y hora, separados por "-"
-    #tag = date_series + hora_series
-    
-
-    # Día: cálculo especial
-    # Definimos la hora de corte (5:00 PM = 17:00)
-    #HORA_CORTE = 17  # 17:00 es 5pm
-    #minutos_corte = 0
-    # Obtenemos la hora y minuto del registro
-    #horas = out[col].dt.hour
-    #minutos = out[col].dt.minute
-
-    # Si la hora es >= 17, el día es el mismo que la fecha
-    # Si la hora es < 17, el día es el anterior (fecha menos 1)
-    #dias = out[col].dt.date
-    #dias = dias.where(horas >= HORA_CORTE, dias - pd.Timedelta(days=1))
-    # Convertimos a string con formato M/D/YYYY
-    #dia_series = dias.month.astype(str) + "/" + dias.day.astype(str) + "/" + dias.year.astype(str)
-
     # Insertar las nuevas columnas
     for c in ("hora", "date", "tag"):#, "Día"):
         if c in out.columns: out = out.drop(columns=[c])
@@ -153,7 +125,6 @@ def process_dataframe(
     out.insert(0, "hora", hora_series)
     out.insert(0, "date", date_series)
     
-
     if drop_original_created:
         out = out.drop(columns=[col])
 
