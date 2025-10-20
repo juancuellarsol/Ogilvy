@@ -115,7 +115,7 @@ def process_dataframe(
 
     date_series = pd.to_datetime(out[col])
     
-    hora_series = out[col].dt.strftime("%I:%M:%S %p").str.lstrip("0")#.str.replace("AM", "a. m.").str.replace("PM", "p. m.")
+    hora_series = out[col].dt.strftime("%I:%M:%S %p").dt.floor("h").str.lstrip("0")#.str.replace("AM", "a. m.").str.replace("PM", "p. m.")
     
     #out[col].dt.strftime("%I:%M:%S %p").str.lstrip("0")
 
