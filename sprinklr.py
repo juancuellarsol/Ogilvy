@@ -86,7 +86,7 @@ def process_dataframe(
     created_col: Optional[str] = "Created Time.1",
     tz_from: Optional[str] = None,
     tz_to: Optional[str] = None,
-    drop_original_created: bool = True
+    drop_original_created: bool = False
 ) -> pd.DataFrame:
     """
     Procesa un DataFrame ya cargado y devuelve un nuevo DF con 'date' y 'hora' (AM/PM) al inicio.
@@ -96,7 +96,7 @@ def process_dataframe(
 
     col = _find_created_col(df.columns, created_col)
     out = df.copy()
-    out = out.drop(columns=["Sender Profile Image Url", "Associated Cases"], errors="ignore")
+    out = out.drop(columns=["Sender Profile Image Url", "Associated Cases", "Created Time"], errors="ignore")
 
     out[col] = _coerce_datetime(out[col])
 
@@ -138,7 +138,7 @@ def process_file(
     header: Optional[int] = 0,
     tz_from: Optional[str] = None,
     tz_to: Optional[str] = None,
-    drop_original_created: bool = True
+    drop_original_created: bool = False
 ) -> pd.DataFrame:
     df = _read_any(file_path, skiprows=skiprows, header=header)
     return process_dataframe(
@@ -265,7 +265,7 @@ def auto_export(
     fmt: str = "xlsx",
     tz_from: Optional[str] = None,
     tz_to: Optional[str] = None,
-    drop_original_created: bool = True
+    drop_original_created: bool = False
 ) -> Path:
     out = _derive_out_path(file_path, suffix, fmt)
     df = process_file(
@@ -289,7 +289,7 @@ def batch_export(
     fmt: str = "xlsx",
     tz_from: Optional[str] = None,
     tz_to: Optional[str] = None,
-    drop_original_created: bool = True
+    drop_original_created: bool = False
 ) -> List[Path]:
     outs: List[Path] = []
     for f in files:
