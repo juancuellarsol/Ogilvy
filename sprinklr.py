@@ -194,41 +194,30 @@ def export_df(df: pd.DataFrame, out_path: Union[str, Path]) -> Path:
 
     # --- Asegura que 'hora' sea valor de tiempo (no texto) ---
     if "hora" in df.columns:
-        # 1) Normaliza unicode y variantes de "a. m." / "p. m."
+        df = df.copy()
+           # 1) Primero, parsea la hora como datetime (si aún es texto)
+        hora_dt = pd.to_datetime(df["hora"], format="%I:%M:%S %p", errors="coerce")
+            # 2) AQUÍ: Aplica floor a la hora más cercana ANTES de normalizar
+        hora_dt = hora_dt.dt.floor("h")
+     # 3) Normaliza unicode y variantes de "a. m." / "p. m."
         hora_norm = (
-            df["hora"].astype(str)
-              # normaliza posibles caracteres raros
+            hora_dt.dt.strftime("%I:%M:%S %p")
               .str.normalize("NFKC")
-              .str.replace("\u00A0", " ", regex=False)   # NBSP
-              .str.replace("\u202F", " ", regex=False)   # NARROW NBSP
+              .str.replace("\u00A0", " ", regex=False)
+              .str.replace("\u202F", " ", regex=False)
               .str.strip()
-              # convierte "a. m.", "a.m.", "AM", "am", etc. -> " AM"
               .str.replace(r"(?i)\s*a\s*\.?\s*m\.?\s*$", " AM", regex=True)
               .str.replace(r"(?i)\s*p\s*\.?\s*m\.?\s*$", " PM", regex=True)
         )
-    
-        # 2) Parseo estricto a datetime (solo hora)
+
+        # 4) Parseo estricto a datetime (solo hora)
         h = pd.to_datetime(hora_norm, format="%I:%M:%S %p", errors="coerce")
-    
-        # 3) Convierte a fracción de día (número 0..1) para que Excel la trate como tiempo
+
+        # 5) Convierte a fracción de día
         frac = (h.dt.hour * 3600 + h.dt.minute * 60 + h.dt.second) / 86400.0
-    
-        df = df.copy()
+
         df["hora"] = frac
     
-    #if "hora" in df.columns:
-        # Si viene como texto con "a. m." / "p. m." conviértelo a AM/PM y parsea
-    #    hora_norm = (
-    #        df["hora"].astype(str)
-    #          .str.strip()
-    #          .str.replace(r"\s*a[.\s]?m[.]?", " AM", regex=True, case=False)
-    #          .str.replace(r"\s*p[.\s]?m[.]?", " PM", regex=True, case=False)
-    #    )
-        # A datetime con solo hora (Excel usará una fecha base interna)
-    #    h = pd.to_datetime(hora_norm, format="%I:%M:%S %p", errors="coerce")
-    #    df = df.copy()
-    #    df["hora"] = h
-
     ext = out_path.suffix.lower()
     if ext in (".xlsx", ".xls"):
         try:
