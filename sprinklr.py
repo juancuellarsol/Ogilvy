@@ -78,7 +78,7 @@ def _ensure_naive(dt_series: pd.Series) -> pd.Series:
 
 def _coerce_datetime(s: pd.Series) -> pd.Series:
     if not pd.api.types.is_datetime64_any_dtype(s):
-        s = pd.to_datetime(s, errors="coerce", infer_datetime_format=True)
+        s = pd.to_datetime(s, errors="coerce")#, infer_datetime_format=True)
     return s
 
 def process_dataframe(
@@ -115,7 +115,7 @@ def process_dataframe(
 
     date_series = pd.to_datetime(out[col])
     
-    hora_series = out[col].dt.strftime("%I:%M:%S %p").dt.floor("h").str.lstrip("0")#.str.replace("AM", "a. m.").str.replace("PM", "p. m.")
+    hora_series = out[col].dt.floor("h").dt.strftime("%I:%M:%S %p").str.lstrip("0")#.str.replace("AM", "a. m.").str.replace("PM", "p. m.")
     
     #out[col].dt.strftime("%I:%M:%S %p").str.lstrip("0")
 
