@@ -45,7 +45,7 @@ except Exception:
     pytz = None
 
 _CANDIDATE_CREATED_COLS = [
-    "Created Time", "Created time", "created_time", "created time",
+    "Created Time", "Created time", "created_time", "created time", "Created Time.1",
     "Fecha de creación", "Fecha", "Date Created", "Timestamp", "Time"
 ]
 
@@ -83,7 +83,7 @@ def _coerce_datetime(s: pd.Series) -> pd.Series:
 
 def process_dataframe(
     df: pd.DataFrame,
-    created_col: Optional[str] = "Created Time",
+    created_col: Optional[str] = "Created Time.1",
     tz_from: Optional[str] = None,
     tz_to: Optional[str] = None,
     drop_original_created: bool = True
@@ -162,7 +162,7 @@ def process_dataframe(
 
 def process_file(
     file_path: Union[str, Path],
-    created_col: Optional[str] = "Created Time",
+    created_col: Optional[str] = "Created Time.1",
     skiprows: Optional[Union[int, Sequence[int]]] = None,
     header: Optional[int] = 0,
     tz_from: Optional[str] = None,
@@ -298,7 +298,7 @@ def _derive_out_path(file_path: Union[str, Path], suffix: str, fmt: str) -> Path
 
 def auto_export(
     file_path: Union[str, Path],
-    created_col: Optional[str] = "Created Time",
+    created_col: Optional[str] = "Created Time.1",
     skiprows: Optional[Union[int, Sequence[int]]] = None,
     header: Optional[int] = 0,
     suffix: str = "_limpio",
@@ -322,7 +322,7 @@ def auto_export(
 
 def batch_export(
     files: Sequence[Union[str, Path]],
-    created_col: Optional[str] = "Created Time",
+    created_col: Optional[str] = "Created Time.1",
     skiprows: Optional[Union[int, Sequence[int]]] = None,
     header: Optional[int] = 0,
     suffix: str = "_limpio",
@@ -349,7 +349,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sprinklr → columnas date/hora (AM/PM), export, batch y DF support.")
     parser.add_argument("--file", help="Ruta a un archivo .xlsx/.csv (modo single).")
     parser.add_argument("--glob", help="Patrón glob para procesar varios archivos (ej. '*.xlsx').")
-    parser.add_argument("--created-col", default="Created Time")
+    parser.add_argument("--created-col", default="Created Time.1")
     parser.add_argument("--skiprows", type=int, default=None)
     parser.add_argument("--header", type=int, default=0)
     parser.add_argument("--suffix", default="_limpio")
