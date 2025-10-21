@@ -1,32 +1,32 @@
-# sprinklr_fields.py
-
-# This script extracts and maps specific fields from Sprinklr exports.
-
-import pandas as pd
-
-# Define the mapping of fields
-field_mappings = {
-    'From User': 'author',
-    'Conversation Stream': 'message',
-    'Permalink': 'link',
-    'Created Time.1': 'date_original',
-    'snTypeColumn': 'source',
-    'Sentiment': 'sentiment',
-    'Country': 'country',
-    'Reach (SUM)': 'reach',
-    'Earned Engagements (Recalibrated) (SUM)': 'engagement',
-    'Mentions (SUM)': 'mentions'
-}
-
-# Function to extract and map fields
-def extract_and_map_fields(df):
-    # Create a new DataFrame with mapped fields
-    mapped_df = df.rename(columns=field_mappings)
-    return mapped_df
-
-# Example usage
-if __name__ == '__main__':
-    # Load your Sprinklr export data here, for example:
-    # df = pd.read_csv('sprinklr_export.csv')
-    # mapped_data = extract_and_map_fields(df)
+def process_file(file_path):
+    # Logic to process the file
     pass
+
+
+def process_dataframe(df):
+    # Logic to process the DataFrame and map to unified schema
+    # Extract specified fields
+    unified_data = df[['author', 'message', 'link', 'Created Time']]
+    
+    # Process Created Time to extract date and hora
+    unified_data['date'], unified_data['hora'] = unified_data['Created Time'].apply(process_created_time)
+    
+    # Add additional fields
+    unified_data['source'] = df['source']
+    unified_data['sentiment'] = df['sentiment']
+    unified_data['country'] = df['country']
+    unified_data['reach'] = df['reach']
+    unified_data['engagement'] = df['engagement']
+    unified_data['mentions'] = add_mentions_column(df)
+    
+    return unified_data
+
+
+def process_created_time(created_time):
+    # Logic to process Created Time and return date and hora
+    return date, hora
+
+
+def add_mentions_column(df):
+    # Logic to add mentions column
+    return mentions
