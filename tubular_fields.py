@@ -11,12 +11,8 @@ field_mappings = {
     'Video_URL': 'link',
     'Published_Date': 'date_original',
     'Platform': 'source',
-    #'Sentiment': 'sentiment',
-    #'Creator_Country': 'country',
-    #'Reach (SUM)': 'reach',
     'Total_Engagements': 'engagement',
-    'Views': 'views',
-    #'Mentions (SUM)': 'mentions'
+    'Views': 'views'
 }
 
 # Function to extract and map fields
