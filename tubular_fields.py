@@ -11,6 +11,7 @@ field_mappings = {
     'Video_URL': 'link',
     'Published_Date': 'date_original',
     'Platform': 'source',
+    'Creator_Country': 'country',
     'Total_Engagements': 'engagement',
     'Views': 'views'
 }
