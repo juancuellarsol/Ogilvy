@@ -1,32 +1,37 @@
+# sprinklr_fields.py
+
+from datetime import datetime
+import pytz
+
 def process_file(file_path):
-    # Logic to process the file
+    # Implement logic to read the file and process data
     pass
 
+def process_dataframe(dataframe):
+    # Implement logic to process the dataframe
+    pass
 
-def process_dataframe(df):
-    # Logic to process the DataFrame and map to unified schema
-    # Extract specified fields
-    unified_data = df[['author', 'message', 'link', 'Created Time']]
-    
-    # Process Created Time to extract date and hora
-    unified_data['date'], unified_data['hora'] = unified_data['Created Time'].apply(process_created_time)
-    
-    # Add additional fields
-    unified_data['source'] = df['source']
-    unified_data['sentiment'] = df['sentiment']
-    unified_data['country'] = df['country']
-    unified_data['reach'] = df['reach']
-    unified_data['engagement'] = df['engagement']
-    unified_data['mentions'] = add_mentions_column(df)
-    
-    return unified_data
+def convert_timezone(dt, from_zone, to_zone):
+    from_zone = pytz.timezone(from_zone)
+    to_zone = pytz.timezone(to_zone)
+    dt = from_zone.localize(dt)
+    return dt.astimezone(to_zone)
 
-
-def process_created_time(created_time):
-    # Logic to process Created Time and return date and hora
-    return date, hora
-
-
-def add_mentions_column(df):
-    # Logic to add mentions column
-    return mentions
+def map_fields(data):
+    mapped_data = []
+    for entry in data:
+        mapped_entry = {
+            'author': entry.get('From User'),
+            'message': entry.get('Conversation Stream'),
+            'link': entry.get('Sender Profile Image Url'),
+            'date': convert_timezone(datetime.strptime(entry.get('Created Time'), '%Y-%m-%d %H:%M:%S'), 'UTC', 'Your/Timezone').date(),
+            'hora': convert_timezone(datetime.strptime(entry.get('Created Time'), '%Y-%m-%d %H:%M:%S'), 'UTC', 'Your/Timezone').time(),
+            'source': entry.get('snTypeColumn'),
+            'sentiment': entry.get('Sentiment'),
+            'country': entry.get('Country'),
+            'reach': entry.get('Reach (SUM)'),
+            'engagement': entry.get('Earned Engagements (Recalibrated) (SUM)'),
+            'mentions': entry.get('Mentions (SUM)'),
+        }
+        mapped_data.append(mapped_entry)
+    return mapped_data
