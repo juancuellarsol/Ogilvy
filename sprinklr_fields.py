@@ -8,7 +8,7 @@ import pandas as pd
 field_mappings = {
     'From User': 'author',
     'Conversation Stream': 'message',
-    'Sender Profile Image Url': 'link',
+    'Permalink': 'link',
     'Created Time.1': 'date_original',
     'snTypeColumn': 'source',
     'Sentiment': 'sentiment',
