@@ -9,7 +9,7 @@ field_mappings = {
     'From User': 'author',
     'Conversation Stream': 'message',
     'Sender Profile Image Url': 'link',
-    'Created Time': 'date_original',
+    'Created Time.1': 'date_original',
     'snTypeColumn': 'source',
     'Sentiment': 'sentiment',
     'Country': 'country',
