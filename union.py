@@ -32,12 +32,12 @@ except Exception:
 # -----------------------------
 
 CANON_COLUMNS: List[str] = [
-    "original_file",   # nombre de archivo origen
+    "date",            # fecha local (YYYY-MM-DD)
+    "hora",            # hora local (HH:MM),
+    "date_original",   # fecha y hora que tiene el archivo originialmente
     "author",          # autor del contenido
     "message",         # contenido/texto
     "link",            # URL del post/video
-    "date",            # fecha local (YYYY-MM-DD)
-    "hora",            # hora local (HH:MM)
     "source",          # fuente: Sprinklr/Tubular/YouScan
     "sentiment",       # sentimiento (Sprinklr/YouScan)
     "country",         # país
@@ -151,7 +151,7 @@ def _ensure_tz(dt: pd.Series, tz_from: Optional[str], tz_to: Optional[str]) -> T
         dt_converted = dt
 
     date_str = dt_converted.dt.strftime("%Y-%m-%d")
-    time_str = dt_converted.dt.strftime("%H:%M")
+    time_str = dt_converted.dt.floor("h").dt.strftime("%H:%M")
     return date_str, time_str
 
 
