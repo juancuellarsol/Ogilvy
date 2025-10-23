@@ -206,7 +206,7 @@ def process_sprinklr(
         date_str, _time24, dt_conv = _ensure_tz(created_dt, tz_from, tz_to)
         
         # fecha y hora
-        tmp["date"] = date_str
+        tmp["date"] = dt_conv.dt.date #date_str
         tmp["hora"] = dt_conv.dt.floor("h").dt.strftime("%I:%M %p")   # floor a la hora, AM/PM
         tmp["hour_original"] = dt_conv.dt.strftime("%I:%M %p") 
         
@@ -265,7 +265,7 @@ def process_youscan(
         date_str, _time24, dt_conv = _ensure_tz(dt_combined, tz_from, tz_to)
 
         # columnas solicitadas
-        tmp["date"] = date_str
+        tmp["date"] = dt_conv.dt.date #date_str
         tmp["hora"] = dt_conv.dt.floor("h").dt.strftime("%I:%M %p")
         tmp["hour_original"] = dt_conv.dt.strftime("%I:%M %p")
 
@@ -318,7 +318,7 @@ def process_tubular(
         date_str, _time24, dt_conv = _ensure_tz(created_dt, tz_from, tz_to)
 
         #  date & Hour
-        tmp["date"] = date_str
+        tmp["date"] = dt_conv.dt.date #date_str
         tmp["hora"] = dt_conv.dt.floor("h").dt.strftime("%I:%M %p")
         tmp["hour_original"] = dt_conv.dt.strftime("%I:%M %p")
 
