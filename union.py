@@ -8,9 +8,9 @@ Unifica exports de Sprinklr, YouScan y Tubular en un único .xlsx:
 - Una hoja "combined" con todas las filas unificadas
 - Esquema canónico de columnas
 - Soporte de timezone (tz_from -> tz_to)
-- Fecha en Excel como dd/mm/yy (celda de fecha real)
-- Hora como fracción de día (celda de hora real), formateada h:mm AM/PM
-- 'hour_original' en texto AM/PM para auditoría
+- date = SOLO fecha (date puro) -> Excel 'dd/mm/yy'
+- hora = SOLO hora (fracción de día) -> Excel 'h:mm AM/PM'
+- hour_original = texto AM/PM para auditoría
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ try:
 except Exception:
     pytz = None  # se maneja abajo con chequeo
 
-# xlsxwriter es opcional: si no está, usamos openpyxl y formateamos luego
+# xlsxwriter opcional (formato directo). Si no está, usamos openpyxl como fallback.
 try:
     import xlsxwriter  # noqa: F401
     HAS_XLSXWRITER = True
@@ -40,9 +40,9 @@ except Exception:
 # -----------------------------
 
 CANON_COLUMNS: List[str] = [
-    "date",            # fecha (datetime64 a medianoche)
-    "hora",            # hora (float fracción de día Excel; se formatea h:mm AM/PM)
-    "hour_original",   # texto AM/PM sin floor
+    "date",            # python datetime.date (sin hora) -> Excel dd/mm/yy
+    "hora",            # fracción de día (float) -> Excel h:mm AM/PM
+    "hour_original",   # texto AM/PM
     "author",
     "message",
     "link",
@@ -97,7 +97,7 @@ SYN_TUBULAR: Dict[str, Sequence[str]] = {
 }
 
 # -----------------------------
-# Helpers de lectura y parsing
+# Helpers
 # -----------------------------
 
 def _detect_is_excel(path: str) -> bool:
@@ -130,8 +130,8 @@ def _first_match(cols: Iterable[str], candidates: Sequence[str]) -> Optional[str
 def _ensure_tz(dt: pd.Series, tz_from: Optional[str], tz_to: Optional[str]) -> Tuple[pd.Series, pd.Series, pd.Series]:
     """
     Devuelve (date_str_24h, time_str_24h, dt_converted) con TZ aplicada si corresponde.
-    * date_str_24h: YYYY-MM-DD (para utilidades internas)
-    * time_str_24h: HH:MM 24h (para utilidades internas)
+    * date_str_24h: YYYY-MM-DD (solo utilitario)
+    * time_str_24h: HH:MM 24h (solo utilitario)
     * dt_converted: datetime64[ns, tz] para cálculos/formatos
     """
     if tz_from and tz_to and pytz is not None:
@@ -147,7 +147,6 @@ def _ensure_tz(dt: pd.Series, tz_from: Optional[str], tz_to: Optional[str]) -> T
             dt_converted = dt
     else:
         dt_converted = dt
-
     date_str = dt_converted.dt.strftime("%Y-%m-%d")
     time_str = dt_converted.dt.strftime("%H:%M")
     return date_str, time_str, dt_converted
@@ -158,7 +157,7 @@ def _coerce_datetime(series: pd.Series, dayfirst: bool = False) -> pd.Series:
 def _excel_time_fraction(dt_series: pd.Series) -> pd.Series:
     """
     Convierte un datetime (naive) a fracción de día Excel (float en [0,1)),
-    preservando sólo la hora/min/seg. NaT -> NaN.
+    preservando sólo hora/min/seg. NaT -> NaN.
     """
     hours = dt_series.dt.hour.fillna(0)
     mins  = dt_series.dt.minute.fillna(0)
@@ -197,13 +196,11 @@ def process_sprinklr(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         created_dt  = _coerce_datetime(created_raw, dayfirst=False)
         _d24, _t24, dt_conv = _ensure_tz(created_dt, tz_from, tz_to)
 
-        # date: datetime a medianoche (sin TZ)
-        date_dt  = dt_conv.dt.floor("D").dt.tz_localize(None)
-        # hora base para cálculos: datetime flooreado a hora (sin TZ)
-        hour_dt  = dt_conv.dt.floor("h").dt.tz_localize(None)
-
-        tmp["date"] = date_dt
-        tmp["hora"] = _excel_time_fraction(hour_dt)                 # <- sólo hora como fracción de día
+        # date como python date (no datetime) => Excel no muestra hora
+        tmp["date"] = dt_conv.dt.tz_localize(None).dt.date
+        # hora como fracción de día (sólo hora)
+        tmp["hora"] = _excel_time_fraction(dt_conv.dt.floor("h").dt.tz_localize(None))
+        # hora original como texto AM/PM
         tmp["hour_original"] = dt_conv.dt.tz_localize(None).dt.strftime("%I:%M %p")
 
         tmp["source"] = df.get(c_source, "Sprinklr")
@@ -243,6 +240,7 @@ def process_youscan(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         tmp["message"] = df.get(c_msg, pd.Series([None]*len(df)))
         tmp["link"] = df.get(c_link, pd.Series([None]*len(df)))
 
+        # Date dd.mm.yyyy + Time HH:MM
         date_raw = df.get(c_date, pd.Series([None]*len(df)))
         time_raw = df.get(c_time, pd.Series([None]*len(df)))
         dt_combined = pd.to_datetime(
@@ -251,11 +249,8 @@ def process_youscan(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         )
         _d24, _t24, dt_conv = _ensure_tz(dt_combined, tz_from, tz_to)
 
-        date_dt = dt_conv.dt.floor("D").dt.tz_localize(None)
-        hour_dt = dt_conv.dt.floor("h").dt.tz_localize(None)
-
-        tmp["date"] = date_dt
-        tmp["hora"] = _excel_time_fraction(hour_dt)
+        tmp["date"] = dt_conv.dt.tz_localize(None).dt.date
+        tmp["hora"] = _excel_time_fraction(dt_conv.dt.floor("h").dt.tz_localize(None))
         tmp["hour_original"] = dt_conv.dt.tz_localize(None).dt.strftime("%I:%M %p")
 
         tmp["source"] = df.get(c_source, "YouScan")
@@ -297,11 +292,8 @@ def process_tubular(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         created_dt  = _coerce_datetime(created_raw, dayfirst=False)
         _d24, _t24, dt_conv = _ensure_tz(created_dt, tz_from, tz_to)
 
-        date_dt = dt_conv.dt.floor("D").dt.tz_localize(None)
-        hour_dt = dt_conv.dt.floor("h").dt.tz_localize(None)
-
-        tmp["date"] = date_dt
-        tmp["hora"] = _excel_time_fraction(hour_dt)
+        tmp["date"] = dt_conv.dt.tz_localize(None).dt.date
+        tmp["hora"] = _excel_time_fraction(dt_conv.dt.floor("h").dt.tz_localize(None))
         tmp["hour_original"] = dt_conv.dt.tz_localize(None).dt.strftime("%I:%M %p")
 
         tmp["source"] = df.get(c_source, "Tubular")
@@ -354,10 +346,8 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
     if not sheets:
         raise ValueError("No se encontraron archivos de ninguna fuente (Sprinklr/Tubular/YouScan).")
 
-    # Combine
+    # Combine y orden (date = date puro; hora = fracción de día)
     combined = pd.concat([sheets[k] for k in sheets], ignore_index=True).reindex(columns=CANON_COLUMNS)
-
-    # Orden por date (datetime) y hora (fracción de día)
     combined = combined.sort_values(["date", "hora"]).reset_index(drop=True)
 
     # -------- Guardado con formatos (xlsxwriter si está; si no, openpyxl) --------
@@ -376,11 +366,9 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
                 df_sorted = df.sort_values(["date", "hora"]).reset_index(drop=True)
                 df_sorted.to_excel(writer, sheet_name=name[:31], index=False)
                 ws = writer.sheets[name[:31]]
-                # date -> columna de fecha real
                 if "date" in df_sorted.columns:
                     c = df_sorted.columns.get_loc("date")
                     ws.set_column(c, c, 10, fmt_date)
-                # hora -> columna de tiempo real (fracción de día)
                 if "hora" in df_sorted.columns:
                     c = df_sorted.columns.get_loc("hora")
                     ws.set_column(c, c, 12, fmt_time)
@@ -403,13 +391,11 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
         wb = load_workbook(out_xlsx)
 
         def _format_ws(ws, df):
-            # Formato date
             if "date" in df.columns:
                 col_idx = df.columns.get_loc("date") + 1
                 for col in ws.iter_cols(min_col=col_idx, max_col=col_idx, min_row=2, max_row=ws.max_row):
                     for cell in col:
                         cell.number_format = "dd/mm/yy"
-            # Formato hora (fracción de día)
             if "hora" in df.columns:
                 col_idx = df.columns.get_loc("hora") + 1
                 for col in ws.iter_cols(min_col=col_idx, max_col=col_idx, min_row=2, max_row=ws.max_row):
