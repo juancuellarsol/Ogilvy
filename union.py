@@ -4,10 +4,10 @@
 union.py
 --------
 Unifica exports de Sprinklr, YouScan y Tubular en un único .xlsx:
-- Una hoja por fuente presente (sprinklr, tubular, youscan)
-- Una hoja "combined" con todas las filas
-- Una hoja "combined_agg" agregada por (date, hora, source, sentiment)
-- Formatos Excel consistentes (forzados a es-CO):
+- Hojas por fuente (sprinklr, tubular, youscan)
+- Hoja "combined" con todas las filas
+- Hoja "combined_agg" agregada por (date, hora, source, sentiment)
+- Formatos Excel consistentes, forzados a español (CO):
   * date: [$-es-CO]dd/mm/yy
   * hora y hour_original: [$-es-CO]h:mm:ss AM/PM
 """
@@ -101,12 +101,12 @@ SYN_TUBULAR: Dict[str, Sequence[str]] = {
 
 def _detect_is_excel(path: str) -> bool:
     ext = Path(path).suffix.lower()
-    return ext in (".xlsx",".xls",".xlsm",".xlsb")
+    return ext in (".xlsx", ".xls", ".xlsm", ".xlsb")
 
 def read_any(path: str, skiprows: int = 0, header: int = 0, dtype: Optional[Dict] = None) -> pd.DataFrame:
     if _detect_is_excel(path):
         return pd.read_excel(path, skiprows=skiprows, header=header, dtype=dtype)
-    for enc in ("utf-8-sig","utf-8","latin-1","utf-16","cp1252"):
+    for enc in ("utf-8-sig", "utf-8", "latin-1", "utf-16", "cp1252"):
         try:
             return pd.read_csv(path, skiprows=skiprows, header=header, dtype=dtype, encoding=enc)
         except Exception:
@@ -163,6 +163,25 @@ def _excel_time_fraction(dt_series: pd.Series) -> pd.Series:
     secs  = dt_series.dt.second.fillna(0)
     return (hours*3600 + mins*60 + secs) / 86400.0
 
+def _clean_source(series: pd.Series, *, youscan: bool = False, default_value: str = "") -> pd.Series:
+    """
+    Normaliza 'source':
+    - Siempre: minúsculas y trim
+    - YouScan: elimina 'http(s)://', 'www.', '.com' (o .co/.org/.net) y todo lo que siga, y paths.
+               Ej: 'https://www.instagram.com/xyz' -> 'instagram'
+    """
+    s = series.fillna(default_value).astype(str).str.strip().str.lower()
+    if youscan:
+        s = (
+            s.str.replace(r"^https?://", "", regex=True)
+             .str.replace(r"^www\.", "", regex=True)
+             .str.replace(r"/.*$", "", regex=True)                    # corta en el primer '/'
+             .str.replace(r"\.(com|co|org|net|io|app|tv|info).*$", "", regex=True)  # corta en TLDs comunes
+             .str.replace(r"\.$", "", regex=True)                     # si queda un punto final suelto
+             .str.strip()
+        )
+    return s
+
 # -----------------------------
 # Procesamiento por FUENTE
 # -----------------------------
@@ -174,38 +193,40 @@ def process_sprinklr(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         df = _normalize_cols(read_any(p, skiprows=skiprows, header=header))
         cols = list(df.columns)
 
-        c_author = _first_match(cols, SYN_SPRINKLR["author"])
-        c_msg = _first_match(cols, SYN_SPRINKLR["message"])
-        c_link = _first_match(cols, SYN_SPRINKLR["link"])
+        c_author  = _first_match(cols, SYN_SPRINKLR["author"])
+        c_msg     = _first_match(cols, SYN_SPRINKLR["message"])
+        c_link    = _first_match(cols, SYN_SPRINKLR["link"])
         c_created = _first_match(cols, SYN_SPRINKLR["created"])
-        c_source = _first_match(cols, SYN_SPRINKLR["source"])
-        c_sent = _first_match(cols, SYN_SPRINKLR["sentiment"])
+        c_source  = _first_match(cols, SYN_SPRINKLR["source"])
+        c_sent    = _first_match(cols, SYN_SPRINKLR["sentiment"])
         c_country = _first_match(cols, SYN_SPRINKLR["country"])
-        c_reach = _first_match(cols, SYN_SPRINKLR["reach"])
-        c_eng = _first_match(cols, SYN_SPRINKLR["engagement"])
-        c_mentions = _first_match(cols, SYN_SPRINKLR["mentions"])
+        c_reach   = _first_match(cols, SYN_SPRINKLR["reach"])
+        c_eng     = _first_match(cols, SYN_SPRINKLR["engagement"])
+        c_mentions= _first_match(cols, SYN_SPRINKLR["mentions"])
 
         tmp = pd.DataFrame()
         tmp["original_file"] = Path(p).name
-        tmp["author"] = df.get(c_author, pd.Series([None]*len(df)))
-        tmp["message"] = df.get(c_msg, pd.Series([None]*len(df)))
-        tmp["link"] = df.get(c_link, pd.Series([None]*len(df)))
+        tmp["author"]   = df.get(c_author,  pd.Series([None]*len(df)))
+        tmp["message"]  = df.get(c_msg,     pd.Series([None]*len(df)))
+        tmp["link"]     = df.get(c_link,    pd.Series([None]*len(df)))
 
         created_raw = df.get(c_created, pd.Series([None]*len(df)))
         created_dt  = _coerce_datetime(created_raw, dayfirst=False)
         _d24, _t24, dt_conv = _ensure_tz(created_dt, tz_from, tz_to)
 
-        tmp["date"] = dt_conv.dt.tz_localize(None).dt.date
-        tmp["hora"] = _excel_time_fraction(dt_conv.dt.floor("h").dt.tz_localize(None))
-        tmp["hour_original"] = _excel_time_fraction(dt_conv.dt.tz_localize(None))  # sin floor
+        tmp["date"]          = dt_conv.dt.tz_localize(None).dt.date
+        tmp["hora"]          = _excel_time_fraction(dt_conv.dt.floor("h").dt.tz_localize(None))
+        tmp["hour_original"] = _excel_time_fraction(dt_conv.dt.tz_localize(None))
 
-        tmp["source"] = df.get(c_source, "Sprinklr")
-        tmp["sentiment"] = df.get(c_sent, pd.Series([None]*len(df)))
-        tmp["country"] = df.get(c_country, pd.Series([None]*len(df)))
-        tmp["engagement"] = df.get(c_eng, pd.Series([None]*len(df)))
-        tmp["reach"] = df.get(c_reach, pd.Series([None]*len(df)))
-        tmp["views"] = None
-        tmp["mentions"] = df.get(c_mentions, pd.Series([1]*len(df)))
+        src_series = df.get(c_source, pd.Series(["sprinklr"]*len(df)))
+        tmp["source"] = _clean_source(src_series, youscan=False, default_value="sprinklr")
+
+        tmp["sentiment"]  = df.get(c_sent,    pd.Series([None]*len(df)))
+        tmp["country"]    = df.get(c_country, pd.Series([None]*len(df)))
+        tmp["engagement"] = df.get(c_eng,     pd.Series([None]*len(df)))
+        tmp["reach"]      = df.get(c_reach,   pd.Series([None]*len(df)))
+        tmp["views"]      = None
+        tmp["mentions"]   = df.get(c_mentions,pd.Series([1]*len(df)))
         rows.append(tmp)
 
     out = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(columns=CANON_COLUMNS)
@@ -218,23 +239,23 @@ def process_youscan(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         df = _normalize_cols(read_any(p, skiprows=skiprows, header=header))
         cols = list(df.columns)
 
-        c_author = _first_match(cols, SYN_YOUSCAN["author"])
-        c_msg = _first_match(cols, SYN_YOUSCAN["message"])
-        c_link = _first_match(cols, SYN_YOUSCAN["link"])
-        c_date = _first_match(cols, SYN_YOUSCAN["date"])
-        c_time = _first_match(cols, SYN_YOUSCAN["time"])
-        c_source = _first_match(cols, SYN_YOUSCAN["source"])
-        c_sent = _first_match(cols, SYN_YOUSCAN["sentiment"])
+        c_author  = _first_match(cols, SYN_YOUSCAN["author"])
+        c_msg     = _first_match(cols, SYN_YOUSCAN["message"])
+        c_link    = _first_match(cols, SYN_YOUSCAN["link"])
+        c_date    = _first_match(cols, SYN_YOUSCAN["date"])
+        c_time    = _first_match(cols, SYN_YOUSCAN["time"])
+        c_source  = _first_match(cols, SYN_YOUSCAN["source"])
+        c_sent    = _first_match(cols, SYN_YOUSCAN["sentiment"])
         c_country = _first_match(cols, SYN_YOUSCAN["country"])
-        c_eng = _first_match(cols, SYN_YOUSCAN["engagement"])
-        c_views = _first_match(cols, SYN_YOUSCAN["views"])
-        c_mentions = _first_match(cols, SYN_YOUSCAN["mentions"])
+        c_eng     = _first_match(cols, SYN_YOUSCAN["engagement"])
+        c_views   = _first_match(cols, SYN_YOUSCAN["views"])
+        c_mentions= _first_match(cols, SYN_YOUSCAN["mentions"])
 
         tmp = pd.DataFrame()
         tmp["original_file"] = Path(p).name
-        tmp["author"] = df.get(c_author, pd.Series([None]*len(df)))
-        tmp["message"] = df.get(c_msg, pd.Series([None]*len(df)))
-        tmp["link"] = df.get(c_link, pd.Series([None]*len(df)))
+        tmp["author"]   = df.get(c_author,  pd.Series([None]*len(df)))
+        tmp["message"]  = df.get(c_msg,     pd.Series([None]*len(df)))
+        tmp["link"]     = df.get(c_link,    pd.Series([None]*len(df)))
 
         # Date dd.mm.yyyy + Time HH:MM
         date_raw = df.get(c_date, pd.Series([None]*len(df)))
@@ -245,17 +266,19 @@ def process_youscan(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         )
         _d24, _t24, dt_conv = _ensure_tz(dt_combined, tz_from, tz_to)
 
-        tmp["date"] = dt_conv.dt.tz_localize(None).dt.date
-        tmp["hora"] = _excel_time_fraction(dt_conv.dt.floor("h").dt.tz_localize(None))
+        tmp["date"]          = dt_conv.dt.tz_localize(None).dt.date
+        tmp["hora"]          = _excel_time_fraction(dt_conv.dt.floor("h").dt.tz_localize(None))
         tmp["hour_original"] = _excel_time_fraction(dt_conv.dt.tz_localize(None))
 
-        tmp["source"] = df.get(c_source, "YouScan")
-        tmp["sentiment"] = df.get(c_sent, pd.Series([None]*len(df)))
-        tmp["country"] = df.get(c_country, pd.Series([None]*len(df)))
-        tmp["engagement"] = df.get(c_eng, pd.Series([None]*len(df)))
-        tmp["reach"] = None
-        tmp["views"] = df.get(c_views, pd.Series([None]*len(df)))
-        tmp["mentions"] = df.get(c_mentions, pd.Series([1]*len(df)))
+        src_series = df.get(c_source, pd.Series(["youscan"]*len(df)))
+        tmp["source"] = _clean_source(src_series, youscan=True, default_value="youscan")
+
+        tmp["sentiment"]  = df.get(c_sent,    pd.Series([None]*len(df)))
+        tmp["country"]    = df.get(c_country, pd.Series([None]*len(df)))
+        tmp["engagement"] = df.get(c_eng,     pd.Series([None]*len(df)))
+        tmp["reach"]      = None
+        tmp["views"]      = df.get(c_views,   pd.Series([None]*len(df)))
+        tmp["mentions"]   = df.get(c_mentions,pd.Series([1]*len(df)))
         rows.append(tmp)
 
     out = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(columns=CANON_COLUMNS)
@@ -268,37 +291,39 @@ def process_tubular(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         df = _normalize_cols(read_any(p, skiprows=skiprows, header=header))
         cols = list(df.columns)
 
-        c_author = _first_match(cols, SYN_TUBULAR["author"])
-        c_msg = _first_match(cols, SYN_TUBULAR["message"])
-        c_link = _first_match(cols, SYN_TUBULAR["link"])
+        c_author  = _first_match(cols, SYN_TUBULAR["author"])
+        c_msg     = _first_match(cols, SYN_TUBULAR["message"])
+        c_link    = _first_match(cols, SYN_TUBULAR["link"])
         c_created = _first_match(cols, SYN_TUBULAR["created"])
-        c_source = _first_match(cols, SYN_TUBULAR["source"])
+        c_source  = _first_match(cols, SYN_TUBULAR["source"])
         c_country = _first_match(cols, SYN_TUBULAR["country"])
-        c_views = _first_match(cols, SYN_TUBULAR["views"])
-        c_eng = _first_match(cols, SYN_TUBULAR["engagement"])
-        c_mentions = _first_match(cols, SYN_TUBULAR["mentions"])
+        c_views   = _first_match(cols, SYN_TUBULAR["views"])
+        c_eng     = _first_match(cols, SYN_TUBULAR["engagement"])
+        c_mentions= _first_match(cols, SYN_TUBULAR["mentions"])
 
         tmp = pd.DataFrame()
         tmp["original_file"] = Path(p).name
-        tmp["author"] = df.get(c_author, pd.Series([None]*len(df)))
-        tmp["message"] = df.get(c_msg, pd.Series([None]*len(df)))
-        tmp["link"] = df.get(c_link, pd.Series([None]*len(df)))
+        tmp["author"]   = df.get(c_author,  pd.Series([None]*len(df)))
+        tmp["message"]  = df.get(c_msg,     pd.Series([None]*len(df)))
+        tmp["link"]     = df.get(c_link,    pd.Series([None]*len(df)))
 
         created_raw = df.get(c_created, pd.Series([None]*len(df)))
         created_dt  = _coerce_datetime(created_raw, dayfirst=False)
         _d24, _t24, dt_conv = _ensure_tz(created_dt, tz_from, tz_to)
 
-        tmp["date"] = dt_conv.dt.tz_localize(None).dt.date
-        tmp["hora"] = _excel_time_fraction(dt_conv.dt.floor("h").dt.tz_localize(None))
+        tmp["date"]          = dt_conv.dt.tz_localize(None).dt.date
+        tmp["hora"]          = _excel_time_fraction(dt_conv.dt.floor("h").dt.tz_localize(None))
         tmp["hour_original"] = _excel_time_fraction(dt_conv.dt.tz_localize(None))
 
-        tmp["source"] = df.get(c_source, "Tubular")
-        tmp["sentiment"] = None
-        tmp["country"] = df.get(c_country, pd.Series([None]*len(df)))
-        tmp["engagement"] = df.get(c_eng, pd.Series([None]*len(df)))
-        tmp["reach"] = None
-        tmp["views"] = df.get(c_views, pd.Series([None]*len(df)))
-        tmp["mentions"] = df.get(c_mentions, pd.Series([1]*len(df)))
+        src_series = df.get(c_source, pd.Series(["tubular"]*len(df)))
+        tmp["source"] = _clean_source(src_series, youscan=False, default_value="tubular")
+
+        tmp["sentiment"]  = None
+        tmp["country"]    = df.get(c_country, pd.Series([None]*len(df)))
+        tmp["engagement"] = df.get(c_eng,     pd.Series([None]*len(df)))
+        tmp["reach"]      = None
+        tmp["views"]      = df.get(c_views,   pd.Series([None]*len(df)))
+        tmp["mentions"]   = df.get(c_mentions,pd.Series([1]*len(df)))
         rows.append(tmp)
 
     out = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(columns=CANON_COLUMNS)
@@ -346,13 +371,12 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
     combined = pd.concat([sheets[k] for k in sheets], ignore_index=True).reindex(columns=CANON_COLUMNS)
     combined = combined.sort_values(["date", "hora"]).reset_index(drop=True)
 
-    # -------- AGREGACIÓN simple solicitada --------
-    # Agrupar por (date, hora, source, sentiment) y sumar métricas
+    # Agregación simple solicitada
     agg_cols = ["mentions", "reach", "engagement", "views"]
     group_cols = ["date", "hora", "source", "sentiment"]
     combined_agg = (
         combined.groupby(group_cols, dropna=False, as_index=False)[agg_cols]
-        .sum(min_count=1)  # si todo NaN, deja NaN
+        .sum(min_count=1)
         .sort_values(["date", "hora", "source", "sentiment"])
         .reset_index(drop=True)
     )
