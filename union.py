@@ -262,9 +262,12 @@ def process_youscan(
             errors="coerce", dayfirst=True, infer_datetime_format=True
         )
 
-        date_str, time_str = _ensure_tz(dt_combined, tz_from, tz_to)
+        date_str, _time24, dt_conv = _ensure_tz(dt_combined, tz_from, tz_to)
+
+        # columnas solicitadas
         tmp["date"] = date_str
-        tmp["hora"] = time_str
+        tmp["hora"] = dt_conv.dt.floor("h").dt.strftime("%I:%M %p")
+        tmp["hour_original"] = dt_conv.dt.strftime("%I:%M %p")
 
         tmp["source"] = df.get(c_source, "YousCan")
         tmp["sentiment"] = df.get(c_sent, pd.Series([None]*len(df)))
@@ -312,9 +315,12 @@ def process_tubular(
         created_raw = df.get(c_created, pd.Series([None]*len(df)))
         # Tubular a veces viene como 'YYYY-MM-DD HH:MM:SS' UTC
         created_dt = _coerce_datetime(created_raw, dayfirst=False)
-        date_str, time_str = _ensure_tz(created_dt, tz_from, tz_to)
+        date_str, _time24, dt_conv = _ensure_tz(created_dt, tz_from, tz_to)
+
+        #  date & Hour
         tmp["date"] = date_str
-        tmp["hora"] = time_str
+        tmp["hora"] = dt_conv.dt.floor("h").dt.strftime("%I:%M %p")
+        tmp["hour_original"] = dt_conv.dt.strftime("%I:%M %p")
 
         tmp["source"] = df.get(c_source, "Tubular")
         tmp["sentiment"] = None
