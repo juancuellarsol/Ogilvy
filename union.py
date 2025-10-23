@@ -390,11 +390,11 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
 
     # ---- Agregación requerida: (date, hora, source, sentiment) ----
     agg_cols = ["mentions", "reach", "engagement", "views"]
-    group_cols = ["date", "hora", "source", "sentiment"]
+    group_cols = ["date", "hora", "source", "sentiment", "Country"]
     combined_agg = (
         combined.groupby(group_cols, dropna=False, as_index=False)[agg_cols]
         .sum(min_count=1)
-        .sort_values(["date", "hora", "source", "sentiment"])
+        .sort_values(["date", "hora", "source", "Country", "sentiment"])
         .reset_index(drop=True)
     )
 
@@ -431,7 +431,7 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
             for name, df in sheets.items():
                 _write_sheet(name, df)
             # Solo hoja agregada:
-            _write_sheet("combined_agg", combined_agg)
+            _write_sheet("combined_agg", Agregado)
 
     else:
         from openpyxl import load_workbook
@@ -441,7 +441,7 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
                 df_sorted.to_excel(writer, sheet_name=name[:31], index=False)
             for name, df in sheets.items():
                 _write_sheet(name, df)
-            _write_sheet("combined_agg", combined_agg)
+            _write_sheet("combined_agg", Agregado)
 
         wb = load_workbook(out_xlsx)
 
@@ -462,8 +462,8 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
                     for cell in col:
                         cell.number_format = TIME_FMT
 
-        for name, df in list(sheets.items()) + [("combined_agg", combined_agg)]:
-            ws = wb[name[:31]] if name != "combined_agg" else wb["combined_agg"]
+        for name, df in list(sheets.items()) + [("combined_agg", Agregado)]:
+            ws = wb[name[:31]] if name != "combined_agg" else wb["Agregado"]
             _format_ws(ws, df)
         wb.save(out_xlsx)
 
