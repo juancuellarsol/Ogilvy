@@ -5,10 +5,9 @@ union.py
 --------
 Unifica exports de Sprinklr, YouScan y Tubular en un único .xlsx:
 - Hojas por fuente (sprinklr, tubular, youscan)
-- Hoja "combined" con todas las filas
 - Hoja "combined_agg" agregada por (date, hora, source, sentiment)
-- Formatos Excel consistentes, forzados a español (CO):
-  * date: [$-es-CO]dd/mm/yy
+- Formatos Excel forzados:
+  * date: [$-es-CO]dd/mm/yy  (equiv. visual a "Fecha corta")
   * hora y hour_original: [$-es-CO]h:mm:ss AM/PM
 """
 
@@ -39,9 +38,9 @@ except Exception:
 # -----------------------------
 
 CANON_COLUMNS: List[str] = [
-    "date",            # fecha pura (python date) -> Excel [$-es-CO]dd/mm/yy
-    "hora",            # hora FLOOR(h) como fracción de día -> Excel [$-es-CO]h:mm:ss AM/PM
-    "hour_original",   # hora original como fracción de día -> Excel [$-es-CO]h:mm:ss AM/PM
+    "date",            # fecha pura (python date) -> Excel dd/mm/yy
+    "hora",            # hora FLOOR(h) como fracción de día -> Excel h:mm:ss AM/PM
+    "hour_original",   # hora original como fracción de día -> Excel h:mm:ss AM/PM
     "author",
     "message",
     "link",
@@ -88,7 +87,7 @@ SYN_TUBULAR: Dict[str, Sequence[str]] = {
     "message": ["Title","Video_Title","Description"],
     "link": ["Video Link","URL","Link","Permalink","Video_URL"],
     "created": ["Published Date","Published_Date","Created Time","Timestamp","Fecha"],
-    "country": ["Country","Owner Country","Channel Country"],
+    "country": ["Country","Owner Country","Channel Country","Creator_Country","Creator Country"],
     "views": ["Views","View Count","Total Views"],
     "source": ["snTypeColumn","Source","Source Type","Network","Platform"],
     "engagement": ["Engagement","Total_Engagements","Interactions","Reactions"],
@@ -166,8 +165,8 @@ def _excel_time_fraction(dt_series: pd.Series) -> pd.Series:
 def _clean_source(series: pd.Series, *, youscan: bool = False, default_value: str = "") -> pd.Series:
     """
     Normaliza 'source':
-    - Siempre: minúsculas y trim
-    - YouScan: elimina 'http(s)://', 'www.', '.com' (o .co/.org/.net) y todo lo que siga, y paths.
+    - Siempre: minúsculas y trim.
+    - YouScan: elimina 'http(s)://', 'www.', TLDs (.com/.co/.org/.net/.io/.app/.tv/.info) y paths.
                Ej: 'https://www.instagram.com/xyz' -> 'instagram'
     """
     s = series.fillna(default_value).astype(str).str.strip().str.lower()
@@ -176,8 +175,8 @@ def _clean_source(series: pd.Series, *, youscan: bool = False, default_value: st
             s.str.replace(r"^https?://", "", regex=True)
              .str.replace(r"^www\.", "", regex=True)
              .str.replace(r"/.*$", "", regex=True)                    # corta en el primer '/'
-             .str.replace(r"\.(com|co|org|net|io|app|tv|info).*$", "", regex=True)  # corta en TLDs comunes
-             .str.replace(r"\.$", "", regex=True)                     # si queda un punto final suelto
+             .str.replace(r"\.(com|co|org|net|io|app|tv|info).*$", "", regex=True)
+             .str.replace(r"\.$", "", regex=True)
              .str.strip()
         )
     return s
@@ -318,8 +317,11 @@ def process_tubular(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         src_series = df.get(c_source, pd.Series(["tubular"]*len(df)))
         tmp["source"] = _clean_source(src_series, youscan=False, default_value="tubular")
 
+        # Country en Tubular suele venir ISO-2; normalizo a mayúsculas
+        country_series = df.get(c_country, pd.Series([None]*len(df)))
+        tmp["country"] = country_series.astype(str).str.strip().str.upper()
+
         tmp["sentiment"]  = None
-        tmp["country"]    = df.get(c_country, pd.Series([None]*len(df)))
         tmp["engagement"] = df.get(c_eng,     pd.Series([None]*len(df)))
         tmp["reach"]      = None
         tmp["views"]      = df.get(c_views,   pd.Series([None]*len(df)))
@@ -367,11 +369,11 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
     if not sheets:
         raise ValueError("No se encontraron archivos de ninguna fuente (Sprinklr/Tubular/YouScan).")
 
-    # Combine completo y ordenado
+    # Combine (solo para agregar) y orden base
     combined = pd.concat([sheets[k] for k in sheets], ignore_index=True).reindex(columns=CANON_COLUMNS)
     combined = combined.sort_values(["date", "hora"]).reset_index(drop=True)
 
-    # Agregación simple solicitada
+    # ---- Agregación requerida: (date, hora, source, sentiment) ----
     agg_cols = ["mentions", "reach", "engagement", "views"]
     group_cols = ["date", "hora", "source", "sentiment"]
     combined_agg = (
@@ -410,9 +412,10 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
                     c = df_sorted.columns.get_loc("hour_original")
                     ws.set_column(c, c, 14, fmt_time)
 
+            # Hojas por fuente:
             for name, df in sheets.items():
                 _write_sheet(name, df)
-            _write_sheet("combined", combined)
+            # Solo hoja agregada:
             _write_sheet("combined_agg", combined_agg)
 
     else:
@@ -423,7 +426,6 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
                 df_sorted.to_excel(writer, sheet_name=name[:31], index=False)
             for name, df in sheets.items():
                 _write_sheet(name, df)
-            _write_sheet("combined", combined)
             _write_sheet("combined_agg", combined_agg)
 
         wb = load_workbook(out_xlsx)
@@ -445,8 +447,8 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
                     for cell in col:
                         cell.number_format = TIME_FMT
 
-        for name, df in list(sheets.items()) + [("combined", combined), ("combined_agg", combined_agg)]:
-            ws = wb[name[:31]] if name not in ("combined", "combined_agg") else wb[name]
+        for name, df in list(sheets.items()) + [("combined_agg", combined_agg)]:
+            ws = wb[name[:31]] if name != "combined_agg" else wb["combined_agg"]
             _format_ws(ws, df)
         wb.save(out_xlsx)
 
