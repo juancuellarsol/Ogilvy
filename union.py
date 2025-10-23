@@ -67,6 +67,7 @@ SYN_YOUSCAN: Dict[str, Sequence[str]] = {
     "link": ["Link","URL","Permalink"],
     "date": ["Date"],   # dd.mm.yyyy
     "time": ["Time"],   # HH:MM 24h
+    "source": ["snTypeColumn","Source","Source Type","Network"],
     "sentiment": ["Sentiment"],
     "country": ["Country","Location"],
     "engagement": ["Engagement","Interactions","Total engagement"],
@@ -81,6 +82,7 @@ SYN_TUBULAR: Dict[str, Sequence[str]] = {
     "created": ["Published Date","Published_Date","Created Time","Timestamp","Fecha"],
     "country": ["Country","Owner Country","Channel Country"],
     "views": ["Views","View Count","Total Views"],
+    "source": ["snTypeColumn","Source","Source Type","Network", "Platform"],
     "engagement": ["Engagement","Total_Engagements","Interactions","Reactions"],
     "mentions": ["Mentions","Count"],
 }
