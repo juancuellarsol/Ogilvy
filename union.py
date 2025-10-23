@@ -33,6 +33,21 @@ try:
 except Exception:
     HAS_XLSXWRITER = False
 
+# Diccionario ISO-2 -> Nombre de país (español)
+COUNTRY_CODES = {
+    "CO": "Colombia", "MX": "Mexico", "AR": "Argentina", "BR": "Brazil",
+    "CL": "Chile", "PE": "Peru", "EC": "Ecuador", "VE": "Venezuela",
+    "US": "USA", "CA": "Canada"
+    # Agrega más según necesites
+}
+
+def _expand_country_code(series: pd.Series) -> pd.Series:
+    """
+    Convierte códigos ISO-2 a nombres completos.
+    Ej: 'CO' -> 'Colombia', 'mx' -> 'México'
+    Si no encuentra el código, devuelve el valor original.
+    """
+    return series.str.upper().map(lambda x: COUNTRY_CODES.get(x, x) if pd.notna(x) else x)
 # -----------------------------
 # Configuración y utilidades
 # -----------------------------
@@ -213,7 +228,7 @@ def process_sprinklr(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         created_dt  = _coerce_datetime(created_raw, dayfirst=False)
         _d24, _t24, dt_conv = _ensure_tz(created_dt, tz_from, tz_to)
 
-        tmp["date"]          = dt_conv.dt.tz_localize(None).dt.date
+        tmp["date"]          = dt_conv.dt.tz_localize(None).dt.normalize()
         tmp["hora"]          = _excel_time_fraction(dt_conv.dt.floor("h").dt.tz_localize(None))
         tmp["hour_original"] = _excel_time_fraction(dt_conv.dt.tz_localize(None))
 
@@ -265,7 +280,7 @@ def process_youscan(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         )
         _d24, _t24, dt_conv = _ensure_tz(dt_combined, tz_from, tz_to)
 
-        tmp["date"]          = dt_conv.dt.tz_localize(None).dt.date
+        tmp["date"]          = dt_conv.dt.tz_localize(None).dt.normalize()
         tmp["hora"]          = _excel_time_fraction(dt_conv.dt.floor("h").dt.tz_localize(None))
         tmp["hour_original"] = _excel_time_fraction(dt_conv.dt.tz_localize(None))
 
@@ -310,7 +325,7 @@ def process_tubular(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         created_dt  = _coerce_datetime(created_raw, dayfirst=False)
         _d24, _t24, dt_conv = _ensure_tz(created_dt, tz_from, tz_to)
 
-        tmp["date"]          = dt_conv.dt.tz_localize(None).dt.date
+        tmp["date"]          = dt_conv.dt.tz_localize(None).dt.normalize()
         tmp["hora"]          = _excel_time_fraction(dt_conv.dt.floor("h").dt.tz_localize(None))
         tmp["hour_original"] = _excel_time_fraction(dt_conv.dt.tz_localize(None))
 
@@ -319,7 +334,7 @@ def process_tubular(paths: Sequence[str], skiprows: int = 0, header: int = 0,
 
         # Country en Tubular suele venir ISO-2; normalizo a mayúsculas
         country_series = df.get(c_country, pd.Series([None]*len(df)))
-        tmp["country"] = country_series.astype(str).str.strip().str.upper()
+        tmp["country"] = _expand_country_code(country_series.astype(str).str.strip()) #country_series.astype(str).str.strip().str.upper()
 
         tmp["sentiment"]  = None
         tmp["engagement"] = df.get(c_eng,     pd.Series([None]*len(df)))
