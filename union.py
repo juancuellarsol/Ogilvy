@@ -390,11 +390,11 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
 
     # ---- Agregación requerida: (date, hora, source, sentiment) ----
     agg_cols = ["mentions", "reach", "engagement", "views"]
-    group_cols = ["date", "hora", "source", "sentiment", "Country"]
+    group_cols = ["date", "hora", "source", "sentiment", "country"]
     combined_agg = (
         combined.groupby(group_cols, dropna=False, as_index=False)[agg_cols]
         .sum(min_count=1)
-        .sort_values(["date", "hora", "source", "Country", "sentiment"])
+        .sort_values(["date", "hora", "source", "country", "sentiment"])
         .reset_index(drop=True)
     )
 
