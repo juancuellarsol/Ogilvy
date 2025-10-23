@@ -232,6 +232,7 @@ def process_youscan(
         c_link = _first_match(cols, SYN_YOUSCAN["link"])
         c_date = _first_match(cols, SYN_YOUSCAN["date"])
         c_time = _first_match(cols, SYN_YOUSCAN["time"])
+        c_source = _first_match(cols, SYN_YOUSCAN["source"])
         c_sent = _first_match(cols, SYN_YOUSCAN["sentiment"])
         c_country = _first_match(cols, SYN_YOUSCAN["country"])
         c_eng = _first_match(cols, SYN_YOUSCAN["engagement"])
@@ -257,7 +258,7 @@ def process_youscan(
         tmp["date"] = date_str
         tmp["hora"] = time_str
 
-        tmp["source"] = "YouScan"
+        tmp["source"] = df.get(c_source, "YousCan")
         tmp["sentiment"] = df.get(c_sent, pd.Series([None]*len(df)))
         tmp["country"] = df.get(c_country, pd.Series([None]*len(df)))
         tmp["engagement"] = df.get(c_eng, pd.Series([None]*len(df)))
@@ -287,6 +288,7 @@ def process_tubular(
         c_msg = _first_match(cols, SYN_TUBULAR["message"])
         c_link = _first_match(cols, SYN_TUBULAR["link"])
         c_created = _first_match(cols, SYN_TUBULAR["created"])
+        c_source = _first_match(cols, SYN_TUBULAR["source"])
         c_country = _first_match(cols, SYN_TUBULAR["country"])
         c_views = _first_match(cols, SYN_TUBULAR["views"])
         c_eng = _first_match(cols, SYN_TUBULAR["engagement"])
@@ -306,7 +308,7 @@ def process_tubular(
         tmp["date"] = date_str
         tmp["hora"] = time_str
 
-        tmp["source"] = "Tubular"
+        tmp["source"] = df.get(c_source, "Tubular")
         tmp["sentiment"] = None
         tmp["country"] = df.get(c_country, pd.Series([None]*len(df)))
         tmp["engagement"] = df.get(c_eng, pd.Series([None]*len(df)))
