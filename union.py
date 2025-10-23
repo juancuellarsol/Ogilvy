@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-unify.py
+union.py
 --------
 Unifica exports de Sprinklr, YouScan y Tubular en un único .xlsx:
 - Una hoja por fuente presente (sprinklr, tubular, youscan)
@@ -381,6 +381,28 @@ def etl_unify(
     with pd.option_context("mode.use_inf_as_na", True):
         dt = pd.to_datetime(combined["date"].astype(str) + " " + combined["hora"].astype(str), errors="coerce")
     combined = combined.assign(_dt=dt).sort_values("_dt").drop(columns=["_dt"])
+
+     # AGREGACIÓN para la hoja "combined"
+    # Agrupar por: source, date, hora, sentiment, country
+    # Sumar: mentions, engagement, views, reach
+    # (No incluir: author, message, link, date_original)
+    
+    groupby_cols = ["date", "hora", "source", "sentiment", "country"]
+    agg_dict = {
+        "mentions": "sum",
+        "engagement": "sum",
+        "views": "sum",
+        "reach": "sum",
+    }
+    
+    combined_agg = combined.groupby(groupby_cols, as_index=False, dropna=False).agg(agg_dict)
+        # Asegurar que los valores finales sean 0 en lugar de NaN
+    for col in numeric_cols:
+        combined_agg[col] = combined_agg[col].fillna(0)
+    
+    # Reordenar columnas de forma legible
+    combined_agg = combined_agg[groupby_cols + list(agg_dict.keys())]
+
 
     # Guardado
     out_xlsx = str(out_xlsx)
