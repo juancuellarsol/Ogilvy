@@ -52,7 +52,7 @@ SYN_SPRINKLR: Dict[str, Sequence[str]] = {
     "author": ["From User","User Name","Author","Author Name","User"],
     "message": ["Conversation Stream","Message","Text","Content","Message Text","Post Message"],
     "link": ["Post Url","URL","Link","Permalink"],
-    "created": ["Created Time","Created At","Fecha","Timestamp","Published Date","Published_Date"],
+    "created": ["Created Time.1","Created At","Fecha","Timestamp","Published Date","Published_Date"],
     "source": ["snTypeColumn","Source","Source Type","Network"],
     "sentiment": ["Sentiment","Recalibrated Sentiment","Post Sentiment","Message Sentiment"],
     "country": ["Country","Author Country","Profile Country"],
@@ -63,7 +63,7 @@ SYN_SPRINKLR: Dict[str, Sequence[str]] = {
 
 SYN_YOUSCAN: Dict[str, Sequence[str]] = {
     "author": ["Author","Author Name","Nickname","User"],
-    "message": ["Text","Message","Content"],
+    "message": ["Text","Message","Content", "Text snippet"],
     "link": ["Link","URL","Permalink"],
     "date": ["Date"],   # dd.mm.yyyy
     "time": ["Time"],   # HH:MM 24h
@@ -76,12 +76,12 @@ SYN_YOUSCAN: Dict[str, Sequence[str]] = {
 
 SYN_TUBULAR: Dict[str, Sequence[str]] = {
     "author": ["Channel Name","Creator","Owner","Author"],
-    "message": ["Title","Video Title","Description"],
-    "link": ["Video Link","URL","Link","Permalink","Video Url"],
+    "message": ["Title","Video_Title","Description"],
+    "link": ["Video Link","URL","Link","Permalink","Video_URL"],
     "created": ["Published Date","Published_Date","Created Time","Timestamp","Fecha"],
     "country": ["Country","Owner Country","Channel Country"],
     "views": ["Views","View Count","Total Views"],
-    "engagement": ["Engagement","Total Engagement","Interactions","Reactions"],
+    "engagement": ["Engagement","Total_Engagements","Interactions","Reactions"],
     "mentions": ["Mentions","Count"],
 }
 
