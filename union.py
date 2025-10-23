@@ -431,7 +431,7 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
             for name, df in sheets.items():
                 _write_sheet(name, df)
             # Solo hoja agregada:
-            _write_sheet("combined_agg", Agregado)
+            _write_sheet("Total", combined_agg)
 
     else:
         from openpyxl import load_workbook
@@ -441,7 +441,7 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
                 df_sorted.to_excel(writer, sheet_name=name[:31], index=False)
             for name, df in sheets.items():
                 _write_sheet(name, df)
-            _write_sheet("combined_agg", Agregado)
+            _write_sheet("Total", combined_agg)
 
         wb = load_workbook(out_xlsx)
 
