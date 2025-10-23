@@ -397,12 +397,10 @@ def etl_unify(
     
     combined_agg = combined.groupby(groupby_cols, as_index=False, dropna=False).agg(agg_dict)
         # Asegurar que los valores finales sean 0 en lugar de NaN
-    for col in numeric_cols:
-        combined_agg[col] = combined_agg[col].fillna(0)
     
     # Reordenar columnas de forma legible
     combined_agg = combined_agg[groupby_cols + list(agg_dict.keys())]
-
+    
 
     # Guardado
     out_xlsx = str(out_xlsx)
