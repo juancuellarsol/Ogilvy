@@ -34,7 +34,7 @@ except Exception:
 CANON_COLUMNS: List[str] = [
     "date",            # fecha local (YYYY-MM-DD)
     "hora",            # hora local (HH:MM),
-    "date_original",   # fecha y hora que tiene el archivo originialmente
+    "hour_original",   # fecha y hora que tiene el archivo originialmente
     "author",          # autor del contenido
     "message",         # contenido/texto
     "link",            # URL del post/video
@@ -133,7 +133,7 @@ def _first_match(cols: Iterable[str], candidates: Sequence[str]) -> Optional[str
     return None
 
 
-def _ensure_tz(dt: pd.Series, tz_from: Optional[str], tz_to: Optional[str]) -> Tuple[pd.Series, pd.Series]:
+def _ensure_tz(dt: pd.Series, tz_from: Optional[str], tz_to: Optional[str]) -> Tuple[pd.Series, pd.Series, pd.Series]:
     """
     Devuelve (date_str, time_str) con tz convertida si corresponde.
     - date_str: YYYY-MM-DD (en tz_to si se da)
@@ -144,7 +144,10 @@ def _ensure_tz(dt: pd.Series, tz_from: Optional[str], tz_to: Optional[str]) -> T
             src = pytz.timezone(tz_from)
             dst = pytz.timezone(tz_to)
             # si viene naive, localize con tz_from
-            dt_localized = dt.dt.tz_localize(src, nonexistent='NaT', ambiguous='NaT') if dt.dt.tz is None else dt.dt.tz_convert(dst)
+            if getattr(dt.dt, "tz", None) is None:
+                dt_localized = dt.dt.tz_localize(src, nonexistent='NaT', ambiguous='NaT')
+            else:
+                dt_localized = dt
             dt_converted = dt_localized.dt.tz_convert(dst)
         except Exception:
             # fallback; asumir naive -> tz_to sin conversión
@@ -153,8 +156,8 @@ def _ensure_tz(dt: pd.Series, tz_from: Optional[str], tz_to: Optional[str]) -> T
         dt_converted = dt
 
     date_str = dt_converted.dt.strftime("%Y-%m-%d")
-    time_str = dt_converted.dt.floor("h").dt.strftime("%H:%M")
-    return date_str, time_str
+    time_str = dt_converted.dt.strftime("%H:%M")
+    return date_str, time_str, dt_converted
 
 
 def _coerce_datetime(series: pd.Series, dayfirst: bool = False) -> pd.Series:
@@ -197,11 +200,16 @@ def process_sprinklr(
         tmp["author"] = df.get(c_author, pd.Series([None]*len(df)))
         tmp["message"] = df.get(c_msg, pd.Series([None]*len(df)))
         tmp["link"] = df.get(c_link, pd.Series([None]*len(df)))
+        
         created_raw = df.get(c_created, pd.Series([None]*len(df)))
         created_dt = _coerce_datetime(created_raw, dayfirst=False)
-        date_str, time_str = _ensure_tz(created_dt, tz_from, tz_to)
+        date_str, _time24, dt_conv = _ensure_tz(created_dt, tz_from, tz_to)
+        
+        # fecha y hora
         tmp["date"] = date_str
-        tmp["hora"] = time_str
+        tmp["hora"] = dt_conv.dt.floor("h").dt.strftime("%I:%M %p")   # floor a la hora, AM/PM
+        tmp["hour_original"] = dt_conv.dt.strftime("%I:%M %p") 
+        
         tmp["source"] = df.get(c_source, "Sprinklr")
         tmp["sentiment"] = df.get(c_sent, pd.Series([None]*len(df)))
         tmp["country"] = df.get(c_country, pd.Series([None]*len(df)))
