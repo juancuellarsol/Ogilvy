@@ -311,7 +311,7 @@ def process_youscan(paths: Sequence[str], skiprows: int = 0, header: int = 0,
 
     all_youscan_cols = CANON_COLUMNS + YOUSCAN_EXTRA_COLUMNS
     out = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(columns=all_youscan_cols)
-    return out.reindex(columns=CANON_COLUMNS)
+    return out.reindex(columns=all_youscan_cols, fill_value=None)
 
 def process_tubular(paths: Sequence[str], skiprows: int = 0, header: int = 0,
                     tz_from: Optional[str] = None, tz_to: Optional[str] = None) -> pd.DataFrame:
