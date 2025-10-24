@@ -70,6 +70,9 @@ CANON_COLUMNS: List[str] = [
     "views",
     "mentions",
 ]
+# Columnas específicas por fuente
+YOUSCAN_EXTRA_COLUMNS: List[str] = ["saved_at"]
+
 
 # sinónimos por campo y por fuente
 SYN_SPRINKLR: Dict[str, Sequence[str]] = {
@@ -290,7 +293,13 @@ def process_youscan(paths: Sequence[str], skiprows: int = 0, header: int = 0,
 
         src_series = df.get(c_source, pd.Series(["youscan"]*len(df)))
         tmp["source"] = _clean_source(src_series, youscan=True, default_value="youscan")
-        tmp["saved at"] = dt_conv.dt.tz_localize(None).dt.date
+               # Procesar "saved at" si existe
+        if c_save_at:
+            saved_at_raw = df.get(c_save_at, pd.Series([None]*len(df)))
+            saved_at_dt = _coerce_datetime(saved_at_raw, dayfirst=True)
+            tmp["saved_at"] = saved_at_dt.dt.tz_localize(None).dt.date if saved_at_dt is not None else None
+        else:
+            tmp["saved_at"] = None
 
         tmp["sentiment"]  = df.get(c_sent,    pd.Series([None]*len(df)))
         tmp["country"]    = df.get(c_country, pd.Series([None]*len(df)))
@@ -300,7 +309,8 @@ def process_youscan(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         tmp["mentions"]   = df.get(c_mentions,pd.Series([1]*len(df)))
         rows.append(tmp)
 
-    out = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(columns=CANON_COLUMNS, "saved at")
+    all_youscan_cols = CANON_COLUMNS + YOUSCAN_EXTRA_COLUMNS
+    out = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(columns=all_youscan_cols)
     return out.reindex(columns=CANON_COLUMNS)
 
 def process_tubular(paths: Sequence[str], skiprows: int = 0, header: int = 0,
