@@ -33,6 +33,9 @@ try:
 except Exception:
     HAS_XLSXWRITER = False
 
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='openpyxl')
+
 # Diccionario ISO-2 -> Nombre de país (español)
 COUNTRY_CODES = {
     "CO": "Colombia", "MX": "Mexico", "AR": "Argentina", "BR": "Brazil",
@@ -165,7 +168,7 @@ def _ensure_tz(dt: pd.Series, tz_from: Optional[str], tz_to: Optional[str]) -> T
     return date_str, time_str, dt_converted
 
 def _coerce_datetime(series: pd.Series, dayfirst: bool = False) -> pd.Series:
-    return pd.to_datetime(series, errors="coerce", dayfirst=dayfirst, infer_datetime_format=True)
+    return pd.to_datetime(series, errors="coerce", dayfirst=dayfirst)
 
 def _excel_time_fraction(dt_series: pd.Series) -> pd.Series:
     """
@@ -228,7 +231,7 @@ def process_sprinklr(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         created_dt  = _coerce_datetime(created_raw, dayfirst=False)
         _d24, _t24, dt_conv = _ensure_tz(created_dt, tz_from, tz_to)
 
-        tmp["date"]          = dt_conv.dt.tz_localize(None).dt.normalize()
+        tmp["date"]          = dt_conv.dt.tz_localize(None).dt.date
         tmp["hora"]          = _excel_time_fraction(dt_conv.dt.floor("h").dt.tz_localize(None))
         tmp["hour_original"] = _excel_time_fraction(dt_conv.dt.tz_localize(None))
 
@@ -276,11 +279,11 @@ def process_youscan(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         time_raw = df.get(c_time, pd.Series([None]*len(df)))
         dt_combined = pd.to_datetime(
             date_raw.astype(str).str.strip() + " " + time_raw.astype(str).str.strip(),
-            errors="coerce", dayfirst=True, infer_datetime_format=True
-        )
+            errors="coerce", dayfirst=True)
+     
         _d24, _t24, dt_conv = _ensure_tz(dt_combined, tz_from, tz_to)
 
-        tmp["date"]          = dt_conv.dt.tz_localize(None).dt.normalize()
+        tmp["date"]          = dt_conv.dt.tz_localize(None).dt.date
         tmp["hora"]          = _excel_time_fraction(dt_conv.dt.floor("h").dt.tz_localize(None))
         tmp["hour_original"] = _excel_time_fraction(dt_conv.dt.tz_localize(None))
 
@@ -325,7 +328,7 @@ def process_tubular(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         created_dt  = _coerce_datetime(created_raw, dayfirst=False)
         _d24, _t24, dt_conv = _ensure_tz(created_dt, tz_from, tz_to)
 
-        tmp["date"]          = dt_conv.dt.tz_localize(None).dt.normalize()
+        tmp["date"]          = dt_conv.dt.tz_localize(None).dt.date
         tmp["hora"]          = _excel_time_fraction(dt_conv.dt.floor("h").dt.tz_localize(None))
         tmp["hour_original"] = _excel_time_fraction(dt_conv.dt.tz_localize(None))
 
@@ -384,8 +387,14 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
     if not sheets:
         raise ValueError("No se encontraron archivos de ninguna fuente (Sprinklr/Tubular/YouScan).")
 
+               # Filtrar DataFrames no vacíos antes de concatenar
+    non_empty_sheets = [sheets[k] for k in sheets if not sheets[k].empty]
+    if non_empty_sheets:
+        combined = pd.concat(non_empty_sheets, ignore_index=True).reindex(columns=CANON_COLUMNS)
+    else:
+        combined = pd.DataFrame(columns=CANON_COLUMNS)
     # Combine (solo para agregar) y orden base
-    combined = pd.concat([sheets[k] for k in sheets], ignore_index=True).reindex(columns=CANON_COLUMNS)
+    #combined = pd.concat([sheets[k] for k in sheets], ignore_index=True).reindex(columns=CANON_COLUMNS)
     combined = combined.sort_values(["date", "hora"]).reset_index(drop=True)
 
     # ---- Agregación requerida: (date, hora, source, sentiment) ----
