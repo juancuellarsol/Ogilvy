@@ -69,7 +69,6 @@ CANON_COLUMNS: List[str] = [
     "reach",
     "views",
     "mentions",
-    "original_file",
 ]
 
 # sinónimos por campo y por fuente
@@ -301,7 +300,7 @@ def process_youscan(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         tmp["mentions"]   = df.get(c_mentions,pd.Series([1]*len(df)))
         rows.append(tmp)
 
-    out = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(columns=CANON_COLUMNS)
+    out = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(columns=CANON_COLUMNS, "saved at")
     return out.reindex(columns=CANON_COLUMNS)
 
 def process_tubular(paths: Sequence[str], skiprows: int = 0, header: int = 0,
