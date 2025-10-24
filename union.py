@@ -98,6 +98,7 @@ SYN_YOUSCAN: Dict[str, Sequence[str]] = {
     "engagement": ["Engagement","Interactions","Total engagement"],
     "views": ["Views","View count"],
     "mentions": ["Mentions","Count"],
+    "saved at": ["Saved at", "Saved_at"]
 }
 
 SYN_TUBULAR: Dict[str, Sequence[str]] = {
@@ -261,6 +262,7 @@ def process_youscan(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         c_link    = _first_match(cols, SYN_YOUSCAN["link"])
         c_date    = _first_match(cols, SYN_YOUSCAN["date"])
         c_time    = _first_match(cols, SYN_YOUSCAN["time"])
+        c_save_at = _first_match(cols, SYN_YOUSCAN["saved at"])
         c_source  = _first_match(cols, SYN_YOUSCAN["source"])
         c_sent    = _first_match(cols, SYN_YOUSCAN["sentiment"])
         c_country = _first_match(cols, SYN_YOUSCAN["country"])
@@ -289,6 +291,7 @@ def process_youscan(paths: Sequence[str], skiprows: int = 0, header: int = 0,
 
         src_series = df.get(c_source, pd.Series(["youscan"]*len(df)))
         tmp["source"] = _clean_source(src_series, youscan=True, default_value="youscan")
+        tmp["saved at"] = dt_conv.dt.tz_localize(None).dt.date
 
         tmp["sentiment"]  = df.get(c_sent,    pd.Series([None]*len(df)))
         tmp["country"]    = df.get(c_country, pd.Series([None]*len(df)))
