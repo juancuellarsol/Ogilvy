@@ -499,8 +499,8 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
                     for cell in col:
                         cell.number_format = TIME_FMT
 
-        for name, df in list(sheets.items()) + [("combined_agg", Agregado)]:
-            ws = wb[name[:31]] if name != "combined_agg" else wb["Agregado"]
+        for name, df in list(sheets.items()) + [("Total", combined_agg)]:
+            ws = wb[name[:31]] if name != "Total" else wb["Total"]
             _format_ws(ws, df)
         wb.save(out_xlsx)
 
