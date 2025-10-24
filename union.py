@@ -387,10 +387,21 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
     if not sheets:
         raise ValueError("No se encontraron archivos de ninguna fuente (Sprinklr/Tubular/YouScan).")
 
-               # Filtrar DataFrames no vacíos antes de concatenar
-    non_empty_sheets = [sheets[k] for k in sheets if not sheets[k].empty]
+    # Filtrar DataFrames no vacíos y normalizar columnas antes de concatenar
+    non_empty_sheets = []
+    for k in sheets:
+        df = sheets[k]
+        if not df.empty:
+            # Asegurar que tenga todas las columnas canónicas
+            for col in CANON_COLUMNS:
+                if col not in df.columns:
+                    df[col] = None
+            # Reordenar según CANON_COLUMNS
+            df = df[CANON_COLUMNS]
+            non_empty_sheets.append(df)
+    
     if non_empty_sheets:
-        combined = pd.concat(non_empty_sheets, ignore_index=True).reindex(columns=CANON_COLUMNS)
+        combined = pd.concat(non_empty_sheets, ignore_index=True)
     else:
         combined = pd.DataFrame(columns=CANON_COLUMNS)
     # Combine (solo para agregar) y orden base
