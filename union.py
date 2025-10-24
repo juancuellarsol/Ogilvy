@@ -295,9 +295,7 @@ def process_youscan(paths: Sequence[str], skiprows: int = 0, header: int = 0,
         tmp["source"] = _clean_source(src_series, youscan=True, default_value="youscan")
                # Procesar "saved at" si existe
         if c_save_at:
-            saved_at_raw = df.get(c_save_at, pd.Series([None]*len(df)))
-            saved_at_dt = _coerce_datetime(saved_at_raw, dayfirst=True)
-            tmp["saved_at"] = saved_at_dt.dt.tz_localize(None).dt.date if saved_at_dt is not None else None
+            tmp["saved_at"] = df.get(c_save_at, pd.Series([None]*len(df)))
         else:
             tmp["saved_at"] = None
 
