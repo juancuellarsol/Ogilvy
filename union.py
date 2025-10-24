@@ -387,26 +387,33 @@ def etl_unify(sprinklr_files: Sequence[str] = (), tubular_files: Sequence[str] =
     if not sheets:
         raise ValueError("No se encontraron archivos de ninguna fuente (Sprinklr/Tubular/YouScan).")
 
-    # Filtrar DataFrames no vacíos y normalizar columnas antes de concatenar
+    # Definir tipos explícitos para evitar warnings de concat
+    CANON_DTYPES = {
+        "date": "object", "hora": "float64", "hour_original": "float64",
+        "author": "object", "message": "object", "link": "object",
+        "source": "object", "sentiment": "object", "country": "object",
+        "engagement": "float64", "reach": "float64", "views": "float64",
+        "mentions": "float64", "original_file": "object",
+    }
+    
+    # Preparar DataFrames para concatenación
     non_empty_sheets = []
     for k in sheets:
-        df = sheets[k]
+        df = sheets[k].copy()
         if not df.empty:
-            # Asegurar que tenga todas las columnas canónicas
             for col in CANON_COLUMNS:
                 if col not in df.columns:
-                    df[col] = None
-            # Reordenar según CANON_COLUMNS
-            df = df[CANON_COLUMNS]
-            non_empty_sheets.append(df)
+                    # Crear columna vacía con dtype correcto
+                    df[col] = pd.Series(dtype=CANON_DTYPES.get(col, "object"))
+                elif CANON_DTYPES.get(col) == "float64" and col in df.columns:
+                    # Asegurar que numéricas sean float64
+                    df[col] = pd.to_numeric(df[col], errors="coerce")
+            non_empty_sheets.append(df[CANON_COLUMNS])
     
-    if non_empty_sheets:
-        combined = pd.concat(non_empty_sheets, ignore_index=True)
-    else:
-        combined = pd.DataFrame(columns=CANON_COLUMNS)
-    # Combine (solo para agregar) y orden base
-    #combined = pd.concat([sheets[k] for k in sheets], ignore_index=True).reindex(columns=CANON_COLUMNS)
+    combined = pd.concat(non_empty_sheets, ignore_index=True, sort=False) if non_empty_sheets else pd.DataFrame(columns=CANON_COLUMNS)
     combined = combined.sort_values(["date", "hora"]).reset_index(drop=True)
+               # Filtrar DataFrames no vacíos y normalizar columnas antes de concatenar
+  
 
     # ---- Agregación requerida: (date, hora, source, sentiment) ----
     agg_cols = ["mentions", "reach", "engagement", "views"]
