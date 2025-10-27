@@ -1,0 +1,53 @@
+# ETL Pipeline Configuration
+
+# Data extraction configuration
+extract:
+  type: "sample"  # Options: csv, json, dict, sample
+  # file_path: "data/input/source.csv"  # Required for csv/json
+  # options:  # Additional options for pandas.read_csv
+  #   delimiter: ","
+  #   encoding: "utf-8"
+
+# Data transformation configuration
+transform:
+  operations:
+    - type: "clean"  # Basic data cleaning
+    
+    - type: "filter"  # Filter data
+      condition: "age >= 25"  # Pandas query condition
+    
+    - type: "add_column"  # Add calculated column
+      column_name: "salary_bonus"
+      calculation:
+        type: "multiply"
+        column: "salary"
+        factor: 0.1
+    
+    - type: "normalize"  # Normalize a column
+      column: "age"
+    
+    # - type: "group"  # Group and aggregate
+    #   group_by: ["city"]
+    #   aggregations:
+    #     salary: "mean"
+    #     age: "median"
+
+# Data loading configuration
+load:
+  destinations:
+    - type: "csv"
+      file_path: "data/output/processed_data.csv"
+      options:
+        encoding: "utf-8"
+    
+    - type: "json"
+      file_path: "data/output/processed_data.json"
+      orient: "records"
+    
+    - type: "summary"
+      file_path: "data/output/data_summary.json"
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

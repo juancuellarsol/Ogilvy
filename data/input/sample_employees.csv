@@ -1,0 +1,11 @@
+id,name,email,age,department,salary,hire_date
+1,John Doe,john.doe@company.com,28,Engineering,75000,2020-01-15
+2,Jane Smith,jane.smith@company.com,32,Marketing,68000,2019-03-22
+3,Bob Johnson,bob.johnson@company.com,45,Sales,82000,2018-07-10
+4,Alice Brown,alice.brown@company.com,29,Engineering,79000,2021-02-28
+5,Charlie Wilson,charlie.wilson@company.com,38,HR,65000,2017-11-05
+6,Diana Lee,diana.lee@company.com,31,Marketing,71000,2020-09-12
+7,Frank Miller,frank.miller@company.com,42,Sales,88000,2016-04-18
+8,Grace Chen,grace.chen@company.com,26,Engineering,72000,2022-01-30
+9,Henry Davis,henry.davis@company.com,35,Finance,76000,2019-08-14
+10,Ivy Rodriguez,ivy.rodriguez@company.com,33,Marketing,69000,2020-06-07
